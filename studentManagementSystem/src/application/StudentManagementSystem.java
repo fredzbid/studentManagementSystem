@@ -56,7 +56,7 @@ public class StudentManagementSystem extends Application {
         addStudentButton.setOnAction(event -> showAddStudentDialog(primaryStage));
         updateStudentButton.setOnAction(event -> showUpdateStudentDialog(primaryStage, studentListView.getSelectionModel().getSelectedItem()));
         viewStudentButton.setOnAction(event -> showViewStudentDetailsDialog(primaryStage, studentListView.getSelectionModel().getSelectedItem()));
-        addCourseButton.setOnAction(event -> addNewCourse(primaryStage));
+        addCourseButton.setOnAction(e -> addNewCourse(primaryStage));
         enrollStudentButton.setOnAction(event -> showEnrollStudentDialog(primaryStage, courseComboBox.getValue(), studentListView.getSelectionModel().getSelectedItem()));
         assignGradeButton.setOnAction(event -> showAssignGradeDialog(primaryStage, studentListView.getSelectionModel().getSelectedItem()));
 
@@ -185,7 +185,7 @@ public class StudentManagementSystem extends Application {
         addCourseStage.show();
     }
 
-    private void showEnrollStudentDialog(Stage primaryStage, Course course, Student student) {
+    private void showEnrollStudentDialog(Stage primaryStage, String course, Student student) {
         if (student != null && course != null) {
             student.enrollCourse(course);
             showAlert("Enroll Student", "Student enrolled successfully.");
@@ -194,19 +194,19 @@ public class StudentManagementSystem extends Application {
         }
     }
 
-
     private void showAssignGradeDialog(Stage primaryStage, Student student) {
+    	// Implement logic to show dialog for assigning a grade to a student
         if (student != null && !student.getEnrolledCourses().isEmpty()) {
-            ChoiceDialog<Course> dialog = new ChoiceDialog<>(student.getEnrolledCourses().get(0), student.getEnrolledCourses());
+            ChoiceDialog<String> dialog = new ChoiceDialog<>(student.getEnrolledCourses().get(0), student.getEnrolledCourses());
             dialog.setTitle("Assign Grade");
             dialog.setHeaderText("Assign Grade for " + student.getName());
             dialog.setContentText("Select the course:");
 
-            Optional<Course> courseResult = dialog.showAndWait();
-            courseResult.ifPresent(course -> {
+            Optional<String> courseResult = dialog.showAndWait();
+            courseResult.ifPresent(courseName -> {
                 TextInputDialog gradeDialog = new TextInputDialog();
                 gradeDialog.setTitle("Assign Grade");
-                gradeDialog.setHeaderText("Assign Grade for " + student.getName() + " in " + course.getName());
+                gradeDialog.setHeaderText("Assign Grade for " + student.getName() + " in " + courseName);
                 gradeDialog.setContentText("Enter the grade:");
 
                 Optional<String> result = gradeDialog.showAndWait();
@@ -214,13 +214,8 @@ public class StudentManagementSystem extends Application {
                     try {
                         double parsedGrade = Double.parseDouble(grade);
                         if (parsedGrade >= 0 && parsedGrade <= 100) {
-                            // Check if the selected course matches an enrolled course for the student
-                            if (student.getEnrolledCourses().contains(course)) {
-                                student.setGrade(course, parsedGrade);
-                                showAlert("Success", "Grade assigned successfully.");
-                            } else {
-                                showAlert("Error", "Selected course is not enrolled by the student.", Alert.AlertType.ERROR);
-                            }
+                            student.setGrade(courseName, parsedGrade);
+                            showAlert("Success", "Grade assigned successfully.");
                         } else {
                             showAlert("Error", "Grade must be between 0 and 100.", Alert.AlertType.ERROR);
                         }
@@ -233,8 +228,6 @@ public class StudentManagementSystem extends Application {
             showAlert("Error", "No enrolled courses found for the selected student.", Alert.AlertType.ERROR);
         }
     }
-
-
     
     private void showStudentCoursesAndGrades(Student student) {
         if (student != null) {
@@ -255,13 +248,12 @@ public class StudentManagementSystem extends Application {
             grid.getChildren().addAll(courseLabel, gradeLabel);
 
             int rowIndex = 1;
-            
-            for (Course course : student.getEnrolledCourses()) {
-                Label courseNameLabel = new Label(course.getName());
+            for (String courseName : student.getEnrolledCourses()) {
+                Label courseNameLabel = new Label(courseName);
                 GridPane.setConstraints(courseNameLabel, 0, rowIndex);
                 Label gradeLabelValue = null;
 
-                double grade = student.getGrades().getOrDefault(course, -1.0); // Use getOrDefault to handle non-existent grades
+                double grade = student.getGrades().getOrDefault(courseName, -1.0); // Use getOrDefault to handle non-existent grades
                 if (grade != -1.0) {
                     gradeLabelValue = new Label(String.valueOf(grade));
                 } else {
@@ -272,7 +264,6 @@ public class StudentManagementSystem extends Application {
                 grid.getChildren().addAll(courseNameLabel, gradeLabelValue);
                 rowIndex++;
             }
-
 
             Scene scene = new Scene(grid, 300, 100);
             courseGradeStage.setScene(scene);
@@ -334,8 +325,8 @@ public class StudentManagementSystem extends Application {
 class Student {
     private String name;
     private int ID = 10653;
-    private Map<Course, Double> grades;
-    private List<Course> enrolledCourses;
+    private Map<String, Double> grades;
+    private List<String> enrolledCourses;
 
     public Student(String name, int ID) {
         this.name = name;
@@ -356,19 +347,23 @@ class Student {
         return ID;
     }
     
-    public Map<Course, Double> getGrades(){
+    public Map<String, Double> getGrades(){
     	return grades;
     }
 
-    public void enrollCourse(Course course) {
+    public void enrollCourse(String course) {
         enrolledCourses.add(course);
     }
 
-    public void setGrade(Course course, double grade) {
+    public void setGrade(String course, double grade) {
         grades.put(course, grade);
     }
+    
+    public String getCourse(String course) {
+    	return enrolledCourses.get(enrolledCourses.indexOf(course));
+    }
 
-    public List<Course> getEnrolledCourses() {
+    public List<String> getEnrolledCourses() {
         return enrolledCourses;
     }
 
@@ -376,10 +371,10 @@ class Student {
         double totalWeightedGrade = 0.0;
         double totalWeight = 0.0;
 
-        for (Map.Entry<Course, Double> entry : grades.entrySet()) {
+        for (Map.Entry<String, Double> entry : grades.entrySet()) {
             double grade = entry.getValue();
             // Assuming courses have a weight
-            double courseWeight = entry.getKey().getCourseWeight();
+            double courseWeight = getCourseWeight(entry.getKey());
             // Calculate weighted grade for each course
             totalWeightedGrade += grade * courseWeight;
             totalWeight += courseWeight;
@@ -390,12 +385,16 @@ class Student {
         return overallGrade;
     }
 
+    private double getCourseWeight(String courseName) {
+        // Dummy method to get course weight
+        return 3.0; // Placeholder value, replace with actual course weight lookup
+    }
+
     @Override
     public String toString() {
         return name;
     }
 }
-
 
 class Course {
     private String courseCode;

@@ -22,7 +22,7 @@ public class CourseManagement {
     // Method to assign grade to a student for a course
     public static void assignGrade(Student student, Course course, double grade) {
         if (course.getEnrolledStudents().contains(student)) {
-        	student.setGrade(course, grade);
+        	student.setGrade(course.getName(), grade);
         	} else {
             System.out.println("Student is not enrolled in this course."); // Testing
         }
